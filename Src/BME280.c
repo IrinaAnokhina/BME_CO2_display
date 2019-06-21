@@ -1,0 +1,232 @@
+/*
+ * Accel.c
+ *
+ *  Created on: 4 окт. 2018 г.
+ *      Author: AnokhinaIrina
+ */
+#include <BME280.h>
+#include"math.h"
+
+float fGX_Cal;
+float fGY_Cal;
+float fGZ_Cal;
+
+extern I2C_HandleTypeDef hi2c1;
+extern HAL_StatusTypeDef status;
+extern int16_t xval, yval, zval;
+
+extern char str1[100];
+BME280_CalibData CalibData;
+int32_t temper_int;
+
+uint8_t BME280_ReadReg(uint8_t Reg)
+{
+  uint8_t res = 0;
+  status = HAL_I2C_Mem_Read(&hi2c1, adress, Reg, I2C_MEMADD_SIZE_8BIT, &res, 1, 0x10000);
+  return res;
+}
+
+static void I2Cx_ReadData16(uint16_t Addr, uint8_t Reg, uint16_t *Value)
+{
+  status = HAL_I2C_Mem_Read(&hi2c1, Addr, Reg, I2C_MEMADD_SIZE_8BIT, (uint8_t*)Value, 2, 0x10000);
+}
+
+static void I2Cx_ReadData24(uint16_t Addr, uint8_t Reg, uint32_t *Value)
+{
+  status = HAL_I2C_Mem_Read(&hi2c1, Addr, Reg, I2C_MEMADD_SIZE_8BIT, (uint8_t*)Value, 3, 0x10000);
+}
+
+uint8_t BME280_ReadStatus(void)
+{
+ uint8_t res;
+ status = HAL_I2C_Mem_Read(&hi2c1, adress, BME280_REGISTER_STATUS, I2C_MEMADD_SIZE_8BIT, &res, 0x01, 0x10000);
+
+ if(res & 0x09)
+  return 1;
+
+return 0;
+}
+
+void BME280_ReadReg_U16(uint8_t Reg, uint16_t *Value)
+{
+  I2Cx_ReadData16(adress,Reg,Value);
+}
+
+void BME280_ReadReg_S16(uint8_t Reg, int16_t *Value)
+{
+  I2Cx_ReadData16(adress,Reg, (uint16_t*) Value);
+}
+
+void BME280_ReadReg_BE_S16(uint8_t Reg, int16_t *Value)
+{
+  I2Cx_ReadData16(adress,Reg,(uint16_t*)Value);
+  *(uint16_t *) Value = be16toword(*(uint16_t *) Value);
+}
+
+void BME280_ReadReg_U24(uint8_t Reg, uint32_t *Value)
+{
+  I2Cx_ReadData24(adress, Reg, Value);
+  *(uint32_t *) Value &= 0x00FFFFFF;
+}
+
+void BME280_ReadReg_BE_U24(uint8_t Reg, uint32_t *Value)
+{
+  I2Cx_ReadData24(adress,Reg,Value);
+  *(uint32_t *) Value = be24toword(*(uint32_t *) Value) & 0x00FFFFFF;
+}
+
+void BME280_ReadCoefficients(void)
+{
+	 uint8_t val;
+  BME280_ReadReg_U16(BME280_REGISTER_DIG_T1,&CalibData.dig_T1);
+  //sprintf(str1, "DIG_T1: %urn", CalibData.dig_T1);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_T2,&CalibData.dig_T2);
+ // sprintf(str1, "DIG_T2: %d", CalibData.dig_T2);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_T3,&CalibData.dig_T3);
+ // sprintf(str1, "DIG_T3: %d", CalibData.dig_T3);
+  BME280_ReadReg_U16(BME280_REGISTER_DIG_P1,&CalibData.dig_P1);
+  //sprintf(str1, "DIG_P1: %urn", CalibData.dig_P1);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_P2,&CalibData.dig_P2);
+  //sprintf(str1, "DIG_P2: %d", CalibData.dig_P2);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_P3,&CalibData.dig_P3);
+ // sprintf(str1, "DIG_P3: %d", CalibData.dig_P3);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_P4,&CalibData.dig_P4);
+  //sprintf(str1, "DIG_P4: %d", CalibData.dig_P4);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_P5,&CalibData.dig_P5);
+  //sprintf(str1, "DIG_P5: %d", CalibData.dig_P5);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_P6,&CalibData.dig_P6);
+ // sprintf(str1, "DIG_P6: %d", CalibData.dig_P6);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_P7,&CalibData.dig_P7);
+  //sprintf(str1, "DIG_P7: %d", CalibData.dig_P7);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_P8,&CalibData.dig_P8);
+  //sprintf(str1, "DIG_P8: %d", CalibData.dig_P8);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_P9,&CalibData.dig_P9);
+  //sprintf(str1, "DIG_P9: %d", CalibData.dig_P9);
+  status = HAL_I2C_Mem_Read(&hi2c1, adress, BME280_REGISTER_DIG_H1, I2C_MEMADD_SIZE_8BIT, &val, 0x01, 0x10000);
+  CalibData.dig_H1 = val;
+ // sprintf(str1, "DIG_H1: %d", CalibData.dig_H1);
+  BME280_ReadReg_S16(BME280_REGISTER_DIG_H2,&CalibData.dig_H2);
+ // sprintf(str1, "DIG_H2: %d", CalibData.dig_H2);
+  status = HAL_I2C_Mem_Read(&hi2c1, adress, BME280_REGISTER_DIG_H3, I2C_MEMADD_SIZE_8BIT, &val, 0x01, 0x10000);
+  CalibData.dig_H3 = val;
+  //sprintf(str1, "DIG_H3: %d", CalibData.dig_H3);
+
+  CalibData.dig_H4 = (BME280_ReadReg(BME280_REGISTER_DIG_H4) << 4) | (BME280_ReadReg(BME280_REGISTER_DIG_H4+1) & 0xF);
+ // sprintf(str1, "DIG_H4: %d", CalibData.dig_H4);
+  CalibData.dig_H5 = (BME280_ReadReg(BME280_REGISTER_DIG_H5+1) << 4) | (BME280_ReadReg(BME280_REGISTER_DIG_H5) >> 4);
+ // sprintf(str1, "DIG_H5: %d", CalibData.dig_H5);
+  CalibData.dig_H6 = (int8_t)BME280_ReadReg(BME280_REGISTER_DIG_H6);
+ // sprintf(str1, "DIG_H6: %d", CalibData.dig_H3);
+}
+
+void BME280_ini()
+{
+	uint8_t data[1] =  {0};
+	uint8_t val;
+	//reset the whole module first
+	data[0] = 0xB6;
+	status = HAL_I2C_Mem_Write(&hi2c1, adress, 0xE0, I2C_MEMADD_SIZE_8BIT, data, 0x01, 0x10000);
+
+	while (BME280_ReadStatus() & BME280_STATUS_IM_UPDATE) ;
+	BME280_ReadCoefficients();
+
+	status = HAL_I2C_Mem_Read(&hi2c1, adress, 0xF5, I2C_MEMADD_SIZE_8BIT, &val, 0x01, 0x10000);
+	data[0] = val | 0xA8;
+	status = HAL_I2C_Mem_Write(&hi2c1, adress, 0xF5, I2C_MEMADD_SIZE_8BIT, data, 0x01, 0x10000);
+
+	status = HAL_I2C_Mem_Read(&hi2c1, adress, 0xF2, I2C_MEMADD_SIZE_8BIT, &val, 0x01, 0x10000);
+	data[0] = val | 1;
+	status = HAL_I2C_Mem_Write(&hi2c1, adress, 0xF2, I2C_MEMADD_SIZE_8BIT, data, 0x01, 0x10000);
+
+	data[0] = 0x27;
+	status = HAL_I2C_Mem_Write(&hi2c1, adress, 0xF4, I2C_MEMADD_SIZE_8BIT, data, 0x01, 0x10000);
+}
+
+float BME280_ReadTemperature(void)
+{
+	float temper_float = 0.0f;
+  uint32_t temper_raw;
+  int32_t val1, val2;
+  BME280_ReadReg_BE_U24(0xFA, &temper_raw);
+  temper_raw >>= 4;
+
+  val1 = ((((temper_raw>>3) - ((int32_t)CalibData.dig_T1 <<1))) *
+  ((int32_t)CalibData.dig_T2)) >> 11;
+
+  val2 = (((((temper_raw>>4) - ((int32_t)CalibData.dig_T1)) *
+  ((temper_raw>>4) - ((int32_t)CalibData.dig_T1))) >> 12) *
+  ((int32_t)CalibData.dig_T3)) >> 14;
+
+  temper_int = val1 + val2;
+
+  temper_float = ((temper_int * 5 + 128) >> 8);
+
+  temper_float /= 100.0f;
+  return temper_float;
+}
+
+float BME280_ReadPressure(void)
+{
+	float press_float = 0.0f;
+  uint32_t press_raw, pres_int;
+  int64_t val1, val2, p;
+  BME280_ReadTemperature(); // must be done first to get t_fine
+  BME280_ReadReg_BE_U24(0xF7,&press_raw);
+  press_raw >>= 4;
+
+  val1 = ((int64_t) temper_int) - 128000;
+  val2 = val1 * val1 * (int64_t)CalibData.dig_P6;
+  val2 = val2 + ((val1 * (int64_t)CalibData.dig_P5) << 17);
+  val2 = val2 + ((int64_t)CalibData.dig_P4 << 35);
+  val1 = ((val1 * val1 * (int64_t)CalibData.dig_P3) >> 8) +
+		  ((val1 * (int64_t)CalibData.dig_P2) << 12);
+  val1 = (((((int64_t)1) << 47) + val1)) * ((int64_t)CalibData.dig_P1) >> 33;
+
+  if (val1 == 0)
+    return 0; // avoid exception caused by division by zero
+
+  p = 1048576 - press_raw;
+  p = (((p << 31) - val2) * 3125) / val1;
+  val1 = (((int64_t)CalibData.dig_P9) * (p >> 13) * (p >> 13)) >> 25;
+  val2 = (((int64_t)CalibData.dig_P8) * p) >> 19;
+  p = ((p + val1 + val2) >> 8) + ((int64_t)CalibData.dig_P7 << 4);
+  pres_int = ((p >> 8) * 1000) + (((p & 0xff) * 390625) / 100000);
+  press_float = pres_int / 100.0f;
+  return press_float;
+}
+
+float BME280_ReadHumidity(void)
+{
+	float hum_float = 0.0f;
+  int16_t hum_raw;
+  int32_t hum_raw_sign, v_x1_u32r;
+  BME280_ReadTemperature(); // must be done first to get t_fine
+  BME280_ReadReg_BE_S16(0xFD,&hum_raw);
+  hum_raw_sign = ((int32_t)hum_raw)&0x0000FFFF;
+
+  v_x1_u32r = (temper_int - ((int32_t)76800));
+  v_x1_u32r = (((((hum_raw_sign << 14) - (((int32_t)CalibData.dig_H4) << 20) -
+  (((int32_t)CalibData.dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) *
+  (((((((v_x1_u32r * ((int32_t)CalibData.dig_H6)) >> 10) *
+  (((v_x1_u32r * ((int32_t)CalibData.dig_H3)) >> 11) + ((int32_t)32768))) >> 10) +
+  ((int32_t)2097152)) * ((int32_t)CalibData.dig_H2) + 8192) >> 14));
+
+  v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
+  ((int32_t)CalibData.dig_H1)) >> 4));
+  v_x1_u32r = (v_x1_u32r < 0) ? 0 : v_x1_u32r;
+  v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
+  hum_float = (v_x1_u32r>>12);
+  hum_float /= 1024.0f;
+  return hum_float;
+}
+
+float BME280_ReadAltitude(float seaLevel)
+{
+	float att = 0.0f;
+	float atm = BME280_ReadPressure();
+  att = 44330.0 * (1.0 - pow(atm / seaLevel, 0.1903));
+  return att;
+}
+
+
+

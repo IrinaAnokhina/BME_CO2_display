@@ -1,0 +1,15 @@
+BME280.c:22:9:BME280_ReadReg	40	static
+BME280.c:29:13:I2Cx_ReadData16	32	static
+BME280.c:34:13:I2Cx_ReadData24	32	static
+BME280.c:39:9:BME280_ReadStatus	32	static
+BME280.c:50:6:BME280_ReadReg_U16	16	static
+BME280.c:55:6:BME280_ReadReg_S16	16	static
+BME280.c:60:6:BME280_ReadReg_BE_S16	16	static
+BME280.c:66:6:BME280_ReadReg_U24	16	static
+BME280.c:72:6:BME280_ReadReg_BE_U24	16	static
+BME280.c:78:6:BME280_ReadCoefficients	40	static
+BME280.c:122:6:BME280_ini	32	static
+BME280.c:145:7:BME280_ReadTemperature	24	static
+BME280.c:168:7:BME280_ReadPressure	184	static
+BME280.c:198:7:BME280_ReadHumidity	24	static
+BME280.c:223:7:BME280_ReadAltitude	32	static
